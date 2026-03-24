@@ -1,131 +1,83 @@
-# testKS
+# Investment Modelling Research Assistant
 
-This repository contains a small FastAPI microservice prepared for Docker and Kubernetes, along with a couple of standalone Python practice scripts.
+A FastAPI project that can discover official investment-modelling sources, ingest document text, index local code, and answer grounded questions using both document and code context.
 
-## Project Overview
+## Features
 
-The main application is a FastAPI service in [app/main.py](/c:/Abhishek/Learning/testKS/testKS/app/main.py). It exposes a single root endpoint:
+- Perplexity-backed source discovery when `PERPLEXITY_API_KEY` is configured
+- Curated fallback sources when the API key is not configured
+- Trusted-domain classification for official-source prioritization
+- Document ingestion and chunking
+- Local code indexing for repository understanding
+- Question answering with document and code citations
+- JSON-backed persistence in `data/`
 
-- `GET /` returns `{"message": "Hello from Kubernetes Microservice"}`
-
-The repo also includes:
-
-- [Dockerfile](/c:/Abhishek/Learning/testKS/testKS/Dockerfile) to containerize the FastAPI app
-- Kubernetes manifests in [k8s/deployment.yaml](/c:/Abhishek/Learning/testKS/testKS/k8s/deployment.yaml) and [k8s/service.yaml](/c:/Abhishek/Learning/testKS/testKS/k8s/service.yaml)
-- [basic_ML.py](/c:/Abhishek/Learning/testKS/testKS/basic_ML.py), a beginner-friendly linear regression example
-- [test.py](/c:/Abhishek/Learning/testKS/testKS/test.py), an Azure Durable Functions practice script
-
-## Repository Structure
+## Project Structure
 
 ```text
-testKS/
-├── app/
-│   ├── main.py
-│   └── requirements.txt
-├── k8s/
-│   ├── deployment.yaml
-│   └── service.yaml
-├── Dockerfile
-├── basic_ML.py
-├── req.txt
-└── test.py
+app/
+  main.py
+  config.py
+  models.py
+  services/
+  storage/
+  utils/
+data/
+run.py
+requirements.txt
+.env.example
 ```
 
-## Requirements
-
-For the FastAPI app:
-
-- Python 3.11 or later recommended
-- Packages listed in [app/requirements.txt](/c:/Abhishek/Learning/testKS/testKS/app/requirements.txt):
-  - `fastapi`
-  - `uvicorn`
-
-For the ML example:
-
-- Packages listed in [req.txt](/c:/Abhishek/Learning/testKS/testKS/req.txt):
-  - `numpy`
-  - `pandas`
-  - `scikit-learn`
-
-## Run the FastAPI App Locally
-
-Install the app dependencies:
+## Setup
 
 ```powershell
-pip install -r app\requirements.txt
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-Start the API server:
+Add your API keys to `.env` if you want live Perplexity discovery.
+
+## Run
 
 ```powershell
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+python run.py
 ```
 
 Open:
 
-- `http://localhost:8000/`
+- `http://localhost:8000`
 - `http://localhost:8000/docs`
 
-## Run with Docker
+## Example API Flow
 
-Build the image:
-
-```powershell
-docker build -t fastapi-microservice .
-```
-
-Run the container:
+### 1. Discover official sources
 
 ```powershell
-docker run -p 8000:8000 fastapi-microservice
+curl -X POST http://localhost:8000/research/discover -H "Content-Type: application/json" -d '{"topic":"discounted cash flow modelling","max_results":5}'
 ```
 
-## Deploy to Kubernetes
-
-Apply the manifests:
+### 2. Ingest a document using pasted text
 
 ```powershell
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
+curl -X POST http://localhost:8000/sources/ingest -H "Content-Type: application/json" -d '{"title":"DCF Notes","url":"https://example.com/dcf","organization":"Example Org","text":"Discounted cash flow models estimate enterprise value by forecasting free cash flow and discounting it.","tags":["dcf"]}'
 ```
 
-Check resources:
+### 3. Index the local codebase
 
 ```powershell
-kubectl get pods
-kubectl get services
+curl -X POST http://localhost:8000/code/index -H "Content-Type: application/json" -d '{"root_path":"."}'
 ```
 
-Notes:
-
-- The deployment uses 2 replicas
-- The container listens on port `8000`
-- The service is exposed as `NodePort`
-- The image in the manifest is `fastapi-microservice` with `imagePullPolicy: Never`, which is suitable for local cluster setups such as Minikube or Docker Desktop Kubernetes after building the image locally
-
-## Standalone Scripts
-
-### `basic_ML.py`
-
-This script demonstrates a simple machine learning workflow using linear regression:
-
-- creates a sample dataset
-- splits data into training and testing sets
-- trains a model
-- evaluates it with mean squared error
-- accepts user input for salary prediction
-
-Run it after installing the ML dependencies:
+### 4. Ask a grounded question
 
 ```powershell
-pip install -r req.txt
-python basic_ML.py
+curl -X POST http://localhost:8000/ask -H "Content-Type: application/json" -d '{"question":"How does this project combine official documents and code understanding?","top_k":5}'
 ```
 
-### `test.py`
+## Notes
 
-This file contains Azure Functions Durable Functions sample code for orchestration/activity patterns. It appears to be a practice or experimental script and is not connected to the FastAPI app, Dockerfile, or Kubernetes manifests in this repository.
-
-## Current Focus of the Project
-
-At present, the most complete part of this repository is the FastAPI microservice and its container/Kubernetes setup. The ML and Azure Functions files look like separate learning examples kept in the same repo.
+- Live web retrieval depends on network access and a valid Perplexity API key.
+- This MVP uses simple token-overlap retrieval rather than embeddings.
+- `data/` stores discovered sources, document chunks, and code chunks as JSON.
